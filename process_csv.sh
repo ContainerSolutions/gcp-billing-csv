@@ -17,7 +17,7 @@ function get_lines_except_last_two {
 
 for f in $(ls raw_billing_csvs)
 do
-	echo doing $f
+    echo doing $f
     CSV_FILENAME='current.csv'
     cp raw_billing_csvs/${f} "${CSV_FILENAME}"
 
@@ -66,6 +66,10 @@ do
     echo "\\COPY tmp_cost (project_id,service_id,sku_id,credit_type,cost_type,usage_start_date,usage_end_date,usage_amount,usage_unit,unrounded_cost,cost,invoice_date) FROM 'cost.csv' DELIMITER ',' CSV HEADER" | psql cost
     echo 'insert into cost (credit_type, cost_type, usage_start_date, usage_end_date, usage_amount, usage_unit, project_id, service_id, sku_id, unrounded_cost, cost, invoice_date) select credit_type, cost_type, usage_start_date, usage_end_date, usage_amount, usage_unit, project_id, service_id, sku_id, unrounded_cost, cost, invoice_date from tmp_cost on conflict do nothing' | psql cost
 
+    echo 'drop table if exists tmp_cost' | psql -t cost
+    echo 'drop table if exists tmp_sku' | psql -t cost
+    echo 'drop table if exists tmp_service' | psql -t cost
+    echo 'drop table if exists tmp_project' | psql -t cost
     # Clean up
-    #rm -f "${CSV_FILENAME}" "$tmpfile1" "$tmpfile2" project.csv service.csv sku.csv "${tmpfile_header}"
+    rm -f "${CSV_FILENAME}" "$tmpfile1" "$tmpfile2" project.csv service.csv sku.csv "${tmpfile_header}"
 done
