@@ -10,7 +10,9 @@ GRANT
 ```
 
 2) Download report from Billing
+   
    a) => Cost Table => Table configuration (Select No Grouping)
+
    b) Download
 
 4) ./run.sh
