@@ -13,6 +13,10 @@ GRANT
    
    a) => Cost Table => Table configuration (Select No Grouping)
 
-   b) Download
+   b) Download and copy/move to `raw_billing_csvs/` folder
 
-4) ./run.sh
+4) `./run.sh`
+
+5) `psql cost < queries.sql`
+
+The queries can be adjusted for your particular needs in analysis.
