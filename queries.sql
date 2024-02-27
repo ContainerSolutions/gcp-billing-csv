@@ -11,6 +11,8 @@ where
   c.project_id = p.project_id and
   s.service_id = c.service_id
 group by 2,3
+having
+  sum(c.cost) > 0
 order by 1;
 
 
@@ -25,6 +27,8 @@ where
   s.service_id = c.service_id
 group by
   s.service_name
+having
+  sum(c.cost) > 0
 order by
   1;
 
@@ -39,6 +43,8 @@ where
   c.project_id = p.project_id
 group by
   p.project_name
+having
+  sum(c.cost) > 0
 order by
   1;
 
@@ -56,9 +62,10 @@ from
   project p,
   service s
 where
-      c.usage_amount is not null
-  and p.project_id = c.project_id
-  and s.service_id = c.service_id
+  c.usage_amount is not null and
+  p.project_id = c.project_id and
+  s.service_id = c.service_id and
+  c.cost > 0
 order by
   s.service_name,
   c.cost;

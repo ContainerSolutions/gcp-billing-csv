@@ -31,7 +31,11 @@ do
     invoice_date="$(grep Invoice.date ${tmpfile_header} | cut -d, -f2)"
 
     # remove commas from file
-    sed -i 's/\(.*,\)"\([0-9.]*\),\([0-9.]*\)"\(.*\)/\1"\2\3"\4/' "${CSV_FILENAME}"
+    # remove commas from numbers in file
+    while grep '.*,"[0-9.]*,[0-9,.]*"' "${CSV_FILENAME}"
+    do
+        sed -i 's/\(.*,\)"\([0-9.]*\),\([0-9,.]*\)"\(.*\)/\1"\2\3"\4/' "${CSV_FILENAME}"
+    done
 
     extract_lines "${CSV_FILENAME}" | grep -v 'Charges not specific to a project' > "${tmpfile1}"
     get_lines_except_last_two "${tmpfile1}" > "${tmpfile2}"
