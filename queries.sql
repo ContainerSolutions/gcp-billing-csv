@@ -169,7 +169,8 @@ with cost_per_service as (
     invoice_date
   from
     cost
-  group by 2,3
+  group by
+    2,3
 ),
 lag_cost_per_service as (
 select
@@ -188,7 +189,11 @@ select
     lag_cost_per_service
 )
 select
-  *
+  cost,
+  project_name,
+  invoice_date,
+  previous_month_running_costs,
+  percent_change
 from
   project_percent_change c,
   project p
@@ -211,7 +216,8 @@ with cost_per_project as (
     invoice_date
   from
     cost
-  group by 2,3
+  group by
+    2,3
 ),
 lag_cost_per_project as (
 select
@@ -220,17 +226,21 @@ select
   invoice_date,
   lag(cost) over (partition by service_id order by invoice_date) as previous_month_running_costs
 from
-  cost_project
+  cost_per_project
 ),
 service_percent_change as (
 select
     *,
     coalesce(round((cost - previous_month_running_costs) / coalesce(nullif(previous_month_running_costs,0), 1) * 100),0) as percent_change
   from
-    lag_cost_project
+    lag_cost_per_project
 )
 select
-  *
+    cost,
+    service_name,
+    invoice_date,
+    previous_month_running_costs,
+    percent_change
 from
   service_percent_change c, service s
 where
