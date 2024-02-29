@@ -1,4 +1,6 @@
--- service and project ordered by cost
+\! echo "============================================="
+\! echo "All-time service and project ordered by cost > x"
+\! echo "============================================="
 select
   sum(c.cost),
   s.service_name,
@@ -10,13 +12,17 @@ from
 where
   c.project_id = p.project_id and
   s.service_id = c.service_id
-group by 2,3
+group by
+  2,3
 having
-  sum(c.cost) > 0
-order by 1;
+  sum(c.cost) > 10
+order by
+  1;
 
 
--- service ordered by cost
+\! echo "============================================="
+\! echo "All-time service ordered by cost > x"
+\! echo "============================================="
 select
   sum(c.cost),
   s.service_name
@@ -28,11 +34,14 @@ where
 group by
   s.service_name
 having
-  sum(c.cost) > 0
+  sum(c.cost) > 10
 order by
   1;
 
--- project ordered by cost
+
+\! echo "============================================="
+\! echo "Project ordered by cost > x"
+\! echo "============================================="
 select
   sum(c.cost),
   p.project_name
@@ -44,12 +53,14 @@ where
 group by
   p.project_name
 having
-  sum(c.cost) > 0
+  sum(c.cost) > 10
 order by
   1;
 
 
---
+\! echo "============================================="
+\! echo "All-time costs ordered by service and cost"
+\! echo "============================================="
 select
   c.invoice_date,
   c.cost,
@@ -67,34 +78,54 @@ where
   s.service_id = c.service_id and
   c.cost > 0
 order by
-  s.service_name,
-  c.cost;
+  c.cost desc,
+  s.service_name
+limit 10;
 
 
--- Show growth over time per project+service+sku
+\! echo "============================================="
+\! echo "Show growth over time per project+service+sku"
+\! echo "============================================="
 -- Can adapt to make specific to project/service
+with cost_lag as (
+  select
+    c.cost_id,
+    s.service_name,
+    p.project_name,
+    k.sku_name,
+    c.invoice_date,
+    c.credit_type,
+    c.cost_type,
+    c.sku_id,
+    c.usage_unit,
+    sum(cost) over (partition by c.project_id, c.service_id, c.sku_id, c.credit_type, c.cost_type order by c.invoice_date) as running_cost
+  from
+    cost c, service s, project p, sku k
+  where
+    c.service_id = s.service_id and
+    c.project_id = p.project_id and
+    c.sku_id = k.sku_id
+  order by
+    c.invoice_date,
+    s.service_name,
+    p.project_name,
+    k.sku_name
+)
 select
-  c.cost_id,
-  s.service_name,
-  p.project_name,
-  k.sku_name,
-  c.invoice_date,
-  sum(cost) over (partition by c.project_id, c.service_id, c.sku_id order by c.invoice_date) AS running_cost
+  *
 from
-  cost c, service s, project p, sku k
+  cost_lag
 where
-  c.service_id = s.service_id and
-  c.project_id = p.project_id and
-  c.sku_id = k.sku_id
+  running_cost > 10
 order by
-  c.invoice_date,
-  s.service_name,
-  p.project_name,
-  k.sku_name;
+  running_cost desc
+limit 100;
 
 
--- Compare costs with previous month, showing any percentage change greater than x
-with cost_lag AS (
+\! echo "============================================="
+\! echo "Compare costs with previous month, showing any percentage change greater than x"
+\! echo "============================================="
+with cost_lag as (
   select
     c.cost_id,
     s.service_name,
@@ -102,19 +133,18 @@ with cost_lag AS (
     k.sku_name,
     c.invoice_date,
     c.cost,
-    lag(cost) over (partition by c.project_id, c.service_id, c.sku_id order by c.invoice_date) AS previous_month_running_costs
+    lag(cost) over (partition by c.project_id, c.service_id, c.sku_id order by c.invoice_date) as previous_month_running_costs
   from
     cost c, service s, project p, sku k
   where
     c.service_id = s.service_id and
     c.project_id = p.project_id and
-    c.sku_id = k.sku_id and
-    c.cost > 1
+    c.sku_id = k.sku_id
 ),
 percent_change as (
   select
     *,
-    coalesce(round((cost - previous_month_running_costs) / coalesce(nullif(previous_month_running_costs,0), 1) * 100),0) AS percent_change
+    coalesce(round((cost - previous_month_running_costs) / coalesce(nullif(previous_month_running_costs,0), 1) * 100),0) as percent_change
   from
     cost_lag
 )
@@ -125,70 +155,88 @@ from
 where
   percent_change > 0
 order by
-  percent_change;
+  percent_change desc
+limit 10;
 
 
-
--- As above, but just for project
-with cost_lag AS (
+\! echo "============================================="
+\! echo "As above, but per project"
+\! echo "============================================="
+with cost_per_service as (
   select
-    c.cost_id,
-    p.project_name,
-    c.invoice_date,
-    c.cost,
-    lag(cost) over (partition by c.project_id order by c.invoice_date) AS previous_month_running_costs
+    sum(cost) as cost,
+    project_id,
+    invoice_date
   from
-    cost c, project p
-  where
-    c.project_id = p.project_id and
-    c.cost > 1
+    cost
+  group by 2,3
 ),
-percent_change as (
-  select
+lag_cost_per_service as (
+select
+  cost,
+  project_id,
+  invoice_date,
+  lag(cost) over (partition by project_id order by invoice_date) as previous_month_running_costs
+from
+  cost_per_service
+),
+project_percent_change as (
+select
     *,
-    coalesce(round((cost - previous_month_running_costs) / coalesce(nullif(previous_month_running_costs,0), 1) * 100),0) AS percent_change
+    coalesce(round((cost - previous_month_running_costs) / coalesce(nullif(previous_month_running_costs,0), 1) * 100),0) as percent_change
   from
-    cost_lag
+    lag_cost_per_service
 )
 select
   *
 from
-  percent_change
+  project_percent_change c,
+  project p
 where
-  percent_change > 0
+  c.project_id = p.project_id and
+  c.percent_change > 0 and
+  c.invoice_date = '2024-01-31'
 order by
-  percent_change;
+  c.percent_change desc
+limit 10;
 
 
-
--- As above but for service
-with cost_lag AS (
+\! echo "============================================="
+\! echo "As above, but per service"
+\! echo "============================================="
+with cost_per_project as (
   select
-    c.cost_id,
-    s.service_name,
-    c.invoice_date,
-    c.cost,
-    lag(cost) over (partition by c.service_id order by c.invoice_date) AS previous_month_running_costs
+    sum(cost) as cost,
+    service_id,
+    invoice_date
   from
-    cost c, service s
-  where
-    c.service_id = s.service_id and
-    c.cost > 1
+    cost
+  group by 2,3
 ),
-percent_change as (
-  select
+lag_cost_per_project as (
+select
+  cost,
+  service_id,
+  invoice_date,
+  lag(cost) over (partition by service_id order by invoice_date) as previous_month_running_costs
+from
+  cost_project
+),
+service_percent_change as (
+select
     *,
-    coalesce(round((cost - previous_month_running_costs) / coalesce(nullif(previous_month_running_costs,0), 1) * 100),0) AS percent_change
+    coalesce(round((cost - previous_month_running_costs) / coalesce(nullif(previous_month_running_costs,0), 1) * 100),0) as percent_change
   from
-    cost_lag
+    lag_cost_project
 )
 select
   *
 from
-  percent_change
+  service_percent_change c, service s
 where
-  percent_change > 0
+  s.service_id = c.service_id and
+  c.percent_change > 0 and
+  c.invoice_date = '2024-01-31'
 order by
-  percent_change;
-
-
+  c.percent_change desc
+limit 10;
