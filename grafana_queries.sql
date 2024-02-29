@@ -6,10 +6,10 @@ with cost_per_project as (
     invoice_date
   from
     cost
-  where
-    cost > 10 -- only consider services where the cost is > 10
   group by
     2,3
+  having
+    sum(cost) > 10 -- only consider services where the cost is > 10
 ),
 lag_cost_per_project as (
 select
@@ -48,9 +48,10 @@ with cost_per_service as (
     invoice_date
   from
     cost
-  where
-    cost > 10 -- only consider projects where the cost is > 10
-  group by 2,3
+  group by
+    2,3
+  having
+    sum(cost) > 10 -- only consider services where the cost is > 10
 ),
 lag_cost_per_service as (
 select
