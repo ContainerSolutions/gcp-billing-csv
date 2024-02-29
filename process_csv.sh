@@ -37,7 +37,7 @@ do
         sed -i 's/\(.*,\)"\([0-9.]*\),\([0-9,.]*\)"\(.*\)/\1"\2\3"\4/' "${CSV_FILENAME}"
     done
 
-    extract_lines "${CSV_FILENAME}" | grep -v 'Charges not specific to a project' > "${tmpfile1}"
+    extract_lines "${CSV_FILENAME}" | grep -v 'Charges not specific to a project' | grep -v '^,,,.*Billing correction' | grep -v '^,,,.*Rounding error' | grep -v '^,,,.*Total' > "${tmpfile1}"
     get_lines_except_last_two "${tmpfile1}" > "${tmpfile2}"
     echo 'project_name,project_id,project_hierarchy' > project.csv
     tail -n +2 "$tmpfile2" | cut -d, -f3,4,5 | sort -u >> project.csv
