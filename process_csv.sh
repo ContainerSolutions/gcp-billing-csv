@@ -75,5 +75,5 @@ do
     echo 'drop table if exists tmp_service' | psql -t cost
     echo 'drop table if exists tmp_project' | psql -t cost
     # Clean up
-    rm -f "${CSV_FILENAME}" "$tmpfile1" "$tmpfile2" project.csv service.csv sku.csv "${tmpfile_header}"
+    rm -f "${CSV_FILENAME}" "$tmpfile1" "$tmpfile2" cost.csv project.csv service.csv sku.csv "${tmpfile_header}"
 done
