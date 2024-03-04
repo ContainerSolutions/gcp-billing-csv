@@ -8,38 +8,45 @@ function extract_lines {
     awk "/^Billing account name/ {found=1} found" "$input_file"
 }
 
+function cleanup {
+    rm -f "${CSV_FILENAME}" "$tmpfile1" "$tmpfile2" project.csv service.csv sku.csv "${tmpfile_header}"
+}
+
 for f in $(ls raw_billing_csvs)
 do
     echo doing $f
     CSV_FILENAME='current.csv'
-    cp raw_billing_csvs/${f} "${CSV_FILENAME}"
-
-    tmpfile1=$(mktemp)
-    tmpfile2=$(mktemp)
-    tmpfile3=$(mktemp)
+    tmpfile1=tmpfile1.csv
+    tmpfile2=tmpfile2.csv
     tmpfile_header=$(mktemp)
 
+	cleanup
+
+    cp raw_billing_csvs/${f} "${CSV_FILENAME}"
     # process file
     head -8 "${CSV_FILENAME}" > "${tmpfile_header}"
     invoice_date="$(grep Invoice.date ${tmpfile_header} | cut -d, -f2)"
 
-    # remove commas from file
-    # remove commas from numbers in file
-    while grep '.*,"[0-9.]*,[0-9,.]*"' "${CSV_FILENAME}"
+    # remove commas from quoted strings in file
+    while grep -q '.*,"[^"][^"]*,[^"]*"' "${CSV_FILENAME}"
     do
-        sed -i 's/\(.*,\)"\([0-9.]*\),\([0-9,.]*\)"\(.*\)/\1"\2\3"\4/' "${CSV_FILENAME}"
+        sed -i 's/\(.*,\)"\([^"][^"]*\),\([^"][^"]*\)"\(.*\)/\1"\2\3"\4/' "${CSV_FILENAME}"
     done
 
-    extract_lines "${CSV_FILENAME}" | grep -v 'Charges not specific to a project' | grep -v '^,,,' > "${tmpfile1}"
+    extract_lines "${CSV_FILENAME}" | grep -v 'Charges not specific to a project' | grep -v '^,,,' | grep -v ',Tax,' > "${tmpfile1}"
+	# project.csv
     echo 'project_name,project_id,project_hierarchy' > project.csv
-    tail -n +2 "$tmpfile2" | cut -d, -f3,4,5 | sort -u >> project.csv
+    tail -n +2 "$tmpfile1" | cut -d, -f3,4,5 | sort -u | ( grep -v '^,' || true ) >> project.csv
+	# service.csv
     echo 'service_name,service_id' > service.csv
-    tail -n +2 "$tmpfile2" | cut -d, -f6,7 | sort -u >> service.csv
+    tail -n +2 "$tmpfile1" | cut -d, -f6,7 | sort -u | ( grep -v '^,' || true ) >> service.csv
+	# sku.csv
     echo 'sku_name,sku_id' > sku.csv
-    tail -n +2 "$tmpfile2" | cut -d, -f8,9 | sort -u >> sku.csv
+    tail -n +2 "$tmpfile1" | cut -d, -f8,9 | sort -u | ( grep -v '^,' || true ) >> sku.csv
+	# cost.csv
     echo 'project_id,service_id,sku_id,credit_type,cost_type,usage_start_date,usage_end_date,usage_amount,usage_unit,unrounded_cost,cost' > cost.csv
-    tail -n +2 "$tmpfile2" | cut -d, -f4,7,9,10,11,12,13,14,15,16,17 >> "${tmpfile3}"
-    sed "s/\$/,"${invoice_date}"/" "${tmpfile3}" > cost.csv
+    tail -n +2 "$tmpfile1" | cut -d, -f4,7,9,10,11,12,13,14,15,16,17 | ( grep -v '^,' || true ) | ( grep -v ',Tax,' ) >> "${tmpfile2}"
+    $SED "s/\$/,"${invoice_date}"/" "${tmpfile2}" > cost.csv
 
     # Upload project
     echo 'drop table if exists tmp_project' | psql -t cost
@@ -67,5 +74,5 @@ do
     echo 'drop table if exists tmp_service' | psql -t cost
     echo 'drop table if exists tmp_project' | psql -t cost
     # Clean up
-    rm -f "${CSV_FILENAME}" "$tmpfile1" "$tmpfile2" cost.csv project.csv service.csv sku.csv "${tmpfile_header}"
+    cleanup
 done

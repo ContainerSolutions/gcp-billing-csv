@@ -4,3 +4,4 @@ cost.csv
 current.csv
 service.csv
 sku.csv
+tmpfile*.csv
