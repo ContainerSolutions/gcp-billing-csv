@@ -46,7 +46,7 @@ do
 	# cost.csv
     echo 'project_id,service_id,sku_id,credit_type,cost_type,usage_start_date,usage_end_date,usage_amount,usage_unit,unrounded_cost,cost' > cost.csv
     tail -n +2 "$tmpfile1" | cut -d, -f4,7,9,10,11,12,13,14,15,16,17 | ( grep -v '^,' || true ) | ( grep -v ',Tax,' ) >> "${tmpfile2}"
-    $SED "s/\$/,"${invoice_date}"/" "${tmpfile2}" > cost.csv
+    sed "s/\$/,"${invoice_date}"/" "${tmpfile2}" > cost.csv
 
     # Upload project
     echo 'drop table if exists tmp_project' | psql -t cost
