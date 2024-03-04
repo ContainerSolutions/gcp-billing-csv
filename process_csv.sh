@@ -8,13 +8,6 @@ function extract_lines {
     awk "/^Billing account name/ {found=1} found" "$input_file"
 }
 
-# Function to get all lines except the last two
-function get_lines_except_last_two {
-    local input_file="$1"
-    local total_lines=$(wc -l ${input_file} | awk '{print $1}')
-    head -n "$((total_lines - 2))" ${input_file}
-}
-
 for f in $(ls raw_billing_csvs)
 do
     echo doing $f
@@ -37,8 +30,7 @@ do
         sed -i 's/\(.*,\)"\([0-9.]*\),\([0-9,.]*\)"\(.*\)/\1"\2\3"\4/' "${CSV_FILENAME}"
     done
 
-    extract_lines "${CSV_FILENAME}" | grep -v 'Charges not specific to a project' | grep -v '^,,,.*Billing correction' | grep -v '^,,,.*Rounding error' | grep -v '^,,,.*Total' > "${tmpfile1}"
-    get_lines_except_last_two "${tmpfile1}" > "${tmpfile2}"
+    extract_lines "${CSV_FILENAME}" | grep -v 'Charges not specific to a project' | grep -v '^,,,' > "${tmpfile1}"
     echo 'project_name,project_id,project_hierarchy' > project.csv
     tail -n +2 "$tmpfile2" | cut -d, -f3,4,5 | sort -u >> project.csv
     echo 'service_name,service_id' > service.csv
