@@ -323,3 +323,21 @@ where
 order by
   c.percent_change desc
 limit 10;
+
+
+
+\! echo "============================================="
+\! echo "Network costs for a specific project. Can be adapted for others, eg 'torage'"
+\! echo "============================================="
+select
+  sku_name, cost
+from
+  cost, sku
+where
+  project_id = 'PROJECT_ID' and
+  cost.sku_id in (select sku_id from sku where sku_name like '%etwork%') and
+invoice_date = '2024-02-29' and
+cost > 10 and
+cost.sku_id = sku.sku_id
+order by
+  cost desc;
